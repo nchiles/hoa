@@ -8,6 +8,11 @@ export default async function MePage() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
+  // Self-heal: if profile.lot_id is null but a lot now exists with a matching
+  // owner_email, link them. Handles the bootstrap case (sign-in before lot
+  // exists) and any later board edits to lots.owner_email. No-op once linked.
+  await supabase.rpc("relink_my_lot");
+
   // RLS lets the user read only their own profile row and (via lot_id) their
   // own lot. No cross-lot data leaks through here.
   const { data: profile } = await supabase

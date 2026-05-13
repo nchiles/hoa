@@ -5,7 +5,6 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { requireBoard } from "@/lib/auth/requireRole";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { createClient } from "@/lib/supabase/server";
 
 const inviteSchema = z.object({
   lot_id: z.uuid("Invalid lot id"),
@@ -13,7 +12,7 @@ const inviteSchema = z.object({
 });
 
 export async function inviteHomeowner(formData: FormData) {
-  await requireBoard();
+  const { supabase } = await requireBoard();
 
   const parsed = inviteSchema.safeParse({
     lot_id: formData.get("lot_id"),
@@ -34,6 +33,31 @@ export async function inviteHomeowner(formData: FormData) {
     );
   }
 
+  // Verify the email actually belongs to the lot. An invite must always tie
+  // a known homeowner email to a real lot; we never want a magic link going
+  // out to a random email that's not attached to a lot record.
+  const { data: lot, error: lotErr } = await supabase
+    .from("lots")
+    .select("id, owner_email")
+    .eq("id", parsed.data.lot_id)
+    .maybeSingle();
+
+  if (lotErr || !lot) {
+    redirect(
+      `/admin/invite?error=${encodeURIComponent("Lot not found.")}`,
+    );
+  }
+  if (!lot.owner_email) {
+    redirect(
+      `/admin/invite?error=${encodeURIComponent("This lot has no owner email. Add one on the lot edit page first.")}`,
+    );
+  }
+  if (lot.owner_email.toLowerCase() !== parsed.data.email.toLowerCase()) {
+    redirect(
+      `/admin/invite?error=${encodeURIComponent("The invite email does not match the lot's owner_email. Refresh and try again.")}`,
+    );
+  }
+
   const admin = createAdminClient();
   const origin = (await headers()).get("origin") ?? "";
   const redirectTo = origin ? `${origin}/auth/callback` : undefined;
@@ -48,7 +72,6 @@ export async function inviteHomeowner(formData: FormData) {
   );
 
   if (inviteErr && /already (been )?registered|already exists/i.test(inviteErr.message)) {
-    const supabase = await createClient();
     const { error: otpErr } = await supabase.auth.signInWithOtp({
       email: parsed.data.email,
       options: { emailRedirectTo: redirectTo, shouldCreateUser: false },
