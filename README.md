@@ -1,6 +1,10 @@
 # Summer Meadows HOA Portal
 
-Member and board portal for the Summer Meadows HOA (Grand Rapids, MI). See the PRD for the full product specification.
+Member and board portal for the Summer Meadows HOA (Grand Rapids, MI).
+
+- **Product spec**: [`docs/PRD.md`](docs/PRD.md)
+- **Phase 1 build plan + milestone status**: [`docs/PLAN.md`](docs/PLAN.md)
+- **Resuming a Claude Code session on this repo**: [`docs/RESUME.md`](docs/RESUME.md)
 
 ## Stack
 
