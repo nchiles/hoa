@@ -30,11 +30,11 @@ export default async function InvitePage({
   const lotsWithoutEmail = lots?.filter((l) => !l.owner_email) ?? [];
 
   // Cross-check against auth.users so we can show "Already signed up" vs
-  // "Invite sent, awaiting click" status. Requires the service-role key; if
-  // it's missing we still render the page but flag the misconfiguration.
-  const hasServiceRole = Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY);
+  // "Invite sent, awaiting click" status. Requires the Supabase secret key;
+  // if it's missing we still render the page but flag the misconfiguration.
+  const hasSecretKey = Boolean(process.env.SUPABASE_SECRET_KEY);
   const usersByEmail = new Map<string, { id: string; confirmed: boolean }>();
-  if (hasServiceRole) {
+  if (hasSecretKey) {
     const admin = createAdminClient();
     const { data: usersData } = await admin.auth.admin.listUsers({
       perPage: 1000,
@@ -71,11 +71,11 @@ export default async function InvitePage({
       )}
       {params.error && <Notice tone="error">{params.error}</Notice>}
 
-      {!hasServiceRole && (
+      {!hasSecretKey && (
         <Notice tone="error">
-          <p className="font-medium">Service-role key not configured.</p>
+          <p className="font-medium">Supabase secret key not configured.</p>
           <p className="mt-1">
-            Set <code>SUPABASE_SERVICE_ROLE_KEY</code> in <code>.env.local</code>{" "}
+            Set <code>SUPABASE_SECRET_KEY</code> in <code>.env.local</code>{" "}
             (Supabase dashboard → Project Settings → API). Without it, invites
             cannot be sent and we can&rsquo;t show signup status.
           </p>

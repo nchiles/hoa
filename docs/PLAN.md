@@ -31,7 +31,7 @@ The board of Summer Meadows HOA (~43–44 lots, Grand Rapids MI) needs a web por
 - `npx create-next-app@latest . --typescript --tailwind --app --eslint --src-dir --import-alias "@/*" --no-turbopack`
 - `npm i @supabase/supabase-js @supabase/ssr zod server-only` and `npm i -D supabase`
 - `npx supabase init`
-- `.env.local` + `.env.example` with `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SERVICE_ROLE_KEY` (server-only)
+- `.env.local` + `.env.example` with `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SECRET_KEY` (server-only)
 - `/`, `/login`, `/privacy` placeholder pages render
 - Supabase clients: `src/lib/supabase/{server,client,admin,middleware}.ts`
 - `src/middleware.ts` refreshes the session on every request (route guards land in M3)
@@ -67,11 +67,11 @@ Migrations in `supabase/migrations/`:
 - **Offboard action** on edit page — nulls owner_name/email/phone/notes, unlinks any profiles, preserves dues_payments
 - `/admin/invite` — table of every lot with an owner email; per-row status (`Not invited` / `Invited` / `Active`) sourced from `auth.admin.listUsers`; "Send invite" / "Resend link" button per row
 - Invite action: `auth.admin.inviteUserByEmail` for new users; falls back to `signInWithOtp` for already-registered users (true resend)
-- Graceful degradation when `SUPABASE_SERVICE_ROLE_KEY` is missing: page still loads with a banner, action returns a clear error
+- Graceful degradation when `SUPABASE_SECRET_KEY` is missing: page still loads with a banner, action returns a clear error
 
 Remaining for Phase 1 close-out (small):
 - Push migrations to the cloud Supabase project (`npx supabase db push`) if not already done
-- Add `SUPABASE_SERVICE_ROLE_KEY` to `.env.local` so the invite flow works end-to-end
+- Add `SUPABASE_SECRET_KEY` to `.env.local` so the invite flow works end-to-end
 - Vercel preview deploy
 - Final privacy notice copy (current placeholder is acceptable for v1)
 

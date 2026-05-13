@@ -25,11 +25,11 @@ export async function inviteHomeowner(formData: FormData) {
     );
   }
 
-  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+  if (!process.env.SUPABASE_SECRET_KEY) {
     redirect(
       "/admin/invite?error=" +
         encodeURIComponent(
-          "Service-role key not configured. Add SUPABASE_SERVICE_ROLE_KEY to .env.local.",
+          "Supabase secret key not configured. Add SUPABASE_SECRET_KEY to .env.local.",
         ),
     );
   }

@@ -42,7 +42,7 @@ npm install
 cp .env.example .env.local
 # Fill .env.local with values from the Supabase dashboard
 # (Project Settings → API): NEXT_PUBLIC_SUPABASE_URL,
-# NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY, SUPABASE_SERVICE_ROLE_KEY
+# NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY, SUPABASE_SECRET_KEY
 ```
 
 Push the M2 migrations to the cloud project (once, if not already done):

@@ -18,8 +18,8 @@ Member and board portal for the Summer Meadows HOA (Grand Rapids, MI).
 ```bash
 npm install
 cp .env.example .env.local
-# Fill in NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY,
-# and SUPABASE_SERVICE_ROLE_KEY from `npx supabase start` output
+# Fill in NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
+# and SUPABASE_SECRET_KEY from `npx supabase start` output
 # (local) or the Supabase dashboard (production).
 npm run dev
 ```
