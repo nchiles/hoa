@@ -5,13 +5,19 @@ file first, then `docs/PLAN.md`, then skim the latest commit log.
 
 ## Where things stand
 
-We are mid-way through **Phase 1** of the Summer Meadows HOA portal. Two of
-four Phase 1 milestones are committed and pushed:
+Phase 1 of the Summer Meadows HOA portal is complete:
 
 - **M1 — Scaffold + Supabase wiring** ✅
 - **M2 — Schema migrations + RLS policies** ✅
-- **M3 — Auth + member self-view (`/me`)** 🔜 next
-- **M4 — Lot CRUD + invite flow + Vercel preview** ⏸
+- **M3 — Auth + member self-view (`/me`)** ✅
+- **M4 — Lot CRUD + invite flow** ✅
+
+Phase 1 close-out remaining (small):
+- Vercel preview deploy
+- Optional: tighten privacy notice copy
+
+Phase 2 (per PRD §10) is next: SVG neighborhood map, lot detail panel
+clickthrough, expenditure tracker, financial dashboard charts.
 
 Confirmed decisions (PRD §9):
 

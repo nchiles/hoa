@@ -46,26 +46,34 @@ Migrations in `supabase/migrations/`:
 
 **Validated locally against a Postgres 16 cluster:** trigger fires, email matching links the right lot, partial unique index rejects a second `is_current = true` bylaw, member RLS blocks cross-reads and INSERTs, board RLS allows everything.
 
-### M3 — Auth + member view 🔜 NEXT
+### M3 — Auth + member view ✅ DONE
 
-- `src/lib/supabase/server.ts` — `createServerClient` with `cookies()` (already in place from M1)
-- `src/lib/supabase/admin.ts` — service-role client, server-only (already in place from M1)
-- `src/middleware.ts` — extend to redirect unauthenticated to `/login`, redirect members away from board routes
-- `src/app/(auth)/login/page.tsx` — server action calls `signInWithOtp({ emailRedirectTo: '/auth/callback' })`
-- `src/app/(auth)/auth/callback/route.ts` — `exchangeCodeForSession`, redirect by role
-- `src/app/(member)/me/page.tsx` — shows signed-in member's lot + current-year dues status
-- Manual board bootstrap: `update profiles set role='board' where email='...'`
+- Magic-link sign in at `/login` (server action with `shouldCreateUser: false` so it stays invite-only)
+- `/auth/callback` exchanges the OAuth code and redirects by role (`/dashboard` for board, `/me` for member)
+- `/auth/signout` POST handler
+- Middleware adds route guards: unauthenticated → `/login`; member on board route → `/me`
+- `/me` shows the signed-in member's lot + current-year dues + payment history, with graceful fallbacks for "no profile" and "no lot linked"
+- `/` redirects authenticated visitors to their role-appropriate landing page
+- Manual board bootstrap remains: `update profiles set role='board' where email='...'`
 
-### M4 — Lot CRUD + invite flow (ends Phase 1)
+### M4 — Lot CRUD + invite flow ✅ DONE
 
-- `src/app/(board)/lots/page.tsx` — board lot list with search
-- `src/app/(board)/lots/new/page.tsx` and `[id]/edit/page.tsx` — Zod-validated forms
-- `src/app/(board)/lots/[id]/page.tsx` — detail with `dues_payments` history
-- `src/app/(board)/admin/invite/page.tsx` — server action uses admin client to call `auth.admin.inviteUserByEmail(lot.owner_email)`; resend supported
-- **Offboarding action** on edit page — server action nulls `owner_name`, `owner_email`, `owner_phone`, `notes`; preserves `dues_payments` rows (the audit trail the PRD requires)
-- `src/lib/auth/requireRole.ts` — server-side board guard wrapping every board page (defense in depth; RLS is the real enforcement)
-- `/privacy` placeholder finalized with stub copy
+- `src/app/(board)/layout.tsx` — shared nav + `requireBoard()` guard for every board page
+- `src/lib/auth/requireRole.ts` — `requireBoard()` and `requireAuth()` server helpers
+- `src/lib/validators/lot.ts` — Zod schema with empty-string-to-null coercion
+- `/lots` — table view with search (lot_number / address / owner_name via ilike)
+- `/lots/new` and `/lots/[id]/edit` — shared `LotForm` component, server-action submit, error display via `?error=` query
+- `/lots/[id]` — detail with dues history, link to edit, link to invite
+- **Offboard action** on edit page — nulls owner_name/email/phone/notes, unlinks any profiles, preserves dues_payments
+- `/admin/invite` — table of every lot with an owner email; per-row status (`Not invited` / `Invited` / `Active`) sourced from `auth.admin.listUsers`; "Send invite" / "Resend link" button per row
+- Invite action: `auth.admin.inviteUserByEmail` for new users; falls back to `signInWithOtp` for already-registered users (true resend)
+- Graceful degradation when `SUPABASE_SERVICE_ROLE_KEY` is missing: page still loads with a banner, action returns a clear error
+
+Remaining for Phase 1 close-out (small):
+- Push migrations to the cloud Supabase project (`npx supabase db push`) if not already done
+- Add `SUPABASE_SERVICE_ROLE_KEY` to `.env.local` so the invite flow works end-to-end
 - Vercel preview deploy
+- Final privacy notice copy (current placeholder is acceptable for v1)
 
 ## Critical files
 
