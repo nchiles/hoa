@@ -55,7 +55,9 @@ npx supabase db push
 ```
 
 Then in **Supabase Dashboard → Authentication**:
-- Providers → Email: enable magic link, **disable signups** (invite-only)
+- Providers → Email: enable magic link, **enable signups**. (App-level gating
+  lives in `/signup`: `shouldCreateUser: false` everywhere except the address-
+  matched homeowner path and the founding-president path.)
 - URL Configuration → Site URL: production URL (or `http://localhost:3000` for now)
 - URL Configuration → Redirect URLs allowlist: add `http://localhost:3000/auth/callback` and the production callback
 
@@ -83,6 +85,33 @@ npx supabase db reset               # applies all migrations from scratch
 # Magic-link emails arrive at http://127.0.0.1:54324
 npx supabase stop
 ```
+
+## Deploying to Vercel
+
+One-time setup:
+
+1. Import the repo in Vercel. Framework preset auto-detects as Next.js.
+2. **Environment Variables** (Project Settings → Environment Variables — set
+   for Production and Preview):
+   - `NEXT_PUBLIC_SUPABASE_URL`
+   - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
+   - `SUPABASE_SECRET_KEY` (server-only — Vercel does not expose vars without
+     the `NEXT_PUBLIC_` prefix to the browser)
+3. **Build & Output Settings:** leave defaults. `npm run build` produces a
+   standard Next.js 15 App Router build.
+4. After the first deploy, go to **Supabase Dashboard → Authentication → URL
+   Configuration** and add the Vercel URLs:
+   - Site URL → the production domain
+   - Redirect URLs allowlist → `https://<your-domain>/auth/callback` plus the
+     same for any preview domain you intend to test against
+5. Run `npx supabase db push` from a local checkout (with `.env.local`
+   pointed at the cloud project) before the first user signs up so the
+   migrations exist on the cloud DB.
+
+Preview deploys: every push to a branch gets its own URL. Add each preview
+URL's `/auth/callback` to the Supabase redirect allowlist as needed, or use
+Supabase's wildcard redirect feature (`https://*.vercel.app/auth/callback`)
+in the dashboard.
 
 ## Where to look in the code
 

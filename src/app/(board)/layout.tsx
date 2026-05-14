@@ -48,6 +48,11 @@ export default async function BoardLayout({
         </div>
       </nav>
       {children}
+      <footer className="mx-auto max-w-5xl px-6 py-8 text-xs text-slate-500">
+        <Link href="/privacy" className="hover:text-slate-700">
+          Privacy notice
+        </Link>
+      </footer>
     </div>
   );
 }

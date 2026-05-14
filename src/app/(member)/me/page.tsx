@@ -184,6 +184,11 @@ function Shell({
         </form>
       </header>
       {children}
+      <footer className="mt-auto pt-8 text-xs text-slate-500">
+        <a href="/privacy" className="hover:text-slate-700">
+          Privacy notice
+        </a>
+      </footer>
     </main>
   );
 }
