@@ -22,12 +22,12 @@ export async function signInWithMagicLink(formData: FormData) {
     redirect("/login?error=Origin%20missing");
   }
 
+  // Sign-in only. New accounts go through /signup (address-based flow), which
+  // is the only path that creates auth users.
   const { error } = await supabase.auth.signInWithOtp({
     email,
     options: {
       emailRedirectTo: `${origin}/auth/callback`,
-      // Invite-only: never auto-create users from the login form. Members must
-      // already have been invited by the board before they can sign in.
       shouldCreateUser: false,
     },
   });

@@ -18,7 +18,6 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  // Role-aware default destination, but honour ?next= if it was passed.
   if (next && next.startsWith("/")) {
     return NextResponse.redirect(`${origin}${next}`);
   }

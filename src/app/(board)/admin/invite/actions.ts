@@ -88,3 +88,71 @@ export async function inviteHomeowner(formData: FormData) {
 
   redirect(`/admin/invite?sent=${encodeURIComponent(parsed.data.email)}`);
 }
+
+const boardInviteSchema = z.object({
+  email: z.email("Invalid email"),
+});
+
+// Invite a new board member by email. The role hint is passed in
+// user_metadata so the handle_new_user() trigger creates the profiles row
+// with role='board' on first signup — no follow-up SQL flip required.
+// If the user already exists, fall back to a fresh OTP and (best-effort)
+// promote the existing profile to board.
+export async function inviteBoardMember(formData: FormData) {
+  const { supabase } = await requireBoard();
+
+  const parsed = boardInviteSchema.safeParse({
+    email: formData.get("email"),
+  });
+  if (!parsed.success) {
+    redirect(
+      `/admin/invite?error=${encodeURIComponent(parsed.error.issues[0].message)}`,
+    );
+  }
+
+  if (!process.env.SUPABASE_SECRET_KEY) {
+    redirect(
+      "/admin/invite?error=" +
+        encodeURIComponent(
+          "Supabase secret key not configured. Add SUPABASE_SECRET_KEY to .env.local.",
+        ),
+    );
+  }
+
+  const admin = createAdminClient();
+  const origin = (await headers()).get("origin") ?? "";
+  const redirectTo = origin ? `${origin}/auth/callback` : undefined;
+
+  const { error: inviteErr } = await admin.auth.admin.inviteUserByEmail(
+    parsed.data.email,
+    { data: { role: "board" }, redirectTo },
+  );
+
+  if (
+    inviteErr &&
+    /already (been )?registered|already exists/i.test(inviteErr.message)
+  ) {
+    // Existing account: promote the profile to board, then send a fresh OTP.
+    await admin
+      .from("profiles")
+      .update({ role: "board" })
+      .eq("email", parsed.data.email);
+
+    const { error: otpErr } = await supabase.auth.signInWithOtp({
+      email: parsed.data.email,
+      options: { emailRedirectTo: redirectTo, shouldCreateUser: false },
+    });
+    if (otpErr) {
+      redirect(`/admin/invite?error=${encodeURIComponent(otpErr.message)}`);
+    }
+    redirect(
+      `/admin/invite?board_resent=${encodeURIComponent(parsed.data.email)}`,
+    );
+  }
+
+  if (inviteErr) {
+    redirect(`/admin/invite?error=${encodeURIComponent(inviteErr.message)}`);
+  }
+
+  redirect(`/admin/invite?board_sent=${encodeURIComponent(parsed.data.email)}`);
+}

@@ -2,7 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 // Routes accessible without an authenticated session.
-const PUBLIC_PATHS = ["/", "/login", "/privacy", "/auth/callback"];
+const PUBLIC_PATHS = ["/", "/login", "/signup", "/privacy", "/auth/callback"];
 
 // Routes that require the 'board' role. Members hitting these get bounced to
 // /me. Prefix match so /lots/123 and /admin/anything are also covered.

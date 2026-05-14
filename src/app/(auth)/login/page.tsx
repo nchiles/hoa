@@ -15,7 +15,7 @@ export default async function LoginPage({
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Sign in</h1>
         <p className="mt-1 text-sm text-slate-600">
-          Members and board only. We&rsquo;ll email you a one-time sign-in link.
+          We&rsquo;ll email you a one-time sign-in link.
         </p>
       </div>
 
@@ -56,12 +56,17 @@ export default async function LoginPage({
         </div>
       )}
 
+      <div className="border-t border-slate-200 pt-4 text-sm text-slate-600">
+        Don&rsquo;t have an account?{" "}
+        <Link href="/signup" className="font-medium text-slate-900 underline">
+          Sign up
+        </Link>
+      </div>
+
       <p className="text-xs text-slate-500">
-        New to the neighborhood?{" "}
         <Link href="/privacy" className="underline">
           Privacy notice
-        </Link>{" "}
-        · Need access? Ask the board to add you.
+        </Link>
       </p>
     </main>
   );

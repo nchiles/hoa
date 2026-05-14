@@ -29,6 +29,9 @@ export default async function BoardLayout({
               <Link href="/admin/invite" className="hover:text-slate-900">
                 Invite
               </Link>
+              <Link href="/admin/settings" className="hover:text-slate-900">
+                Settings
+              </Link>
             </div>
           </div>
           <div className="flex items-center gap-3 text-sm text-slate-600">

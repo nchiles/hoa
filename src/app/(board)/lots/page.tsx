@@ -1,14 +1,14 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 
-type SearchParams = Promise<{ q?: string }>;
+type SearchParams = Promise<{ q?: string; imported?: string }>;
 
 export default async function LotsListPage({
   searchParams,
 }: {
   searchParams: SearchParams;
 }) {
-  const { q } = await searchParams;
+  const { q, imported } = await searchParams;
   const supabase = await createClient();
 
   const currentYear = new Date().getFullYear();
@@ -39,13 +39,27 @@ export default async function LotsListPage({
             database
           </p>
         </div>
-        <Link
-          href="/lots/new"
-          className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
-        >
-          + Add lot
-        </Link>
+        <div className="flex gap-2">
+          <Link
+            href="/lots/import"
+            className="rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+          >
+            Import CSV
+          </Link>
+          <Link
+            href="/lots/new"
+            className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
+          >
+            + Add lot
+          </Link>
+        </div>
       </header>
+
+      {imported && (
+        <div className="rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900">
+          Imported {imported} lot{imported === "1" ? "" : "s"} from CSV.
+        </div>
+      )}
 
       <form className="flex gap-2">
         <input

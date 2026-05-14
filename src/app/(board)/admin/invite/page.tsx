@@ -1,12 +1,14 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { inviteHomeowner } from "./actions";
+import { inviteBoardMember, inviteHomeowner } from "./actions";
 
 type SearchParams = Promise<{
   email?: string;
   sent?: string;
   resent?: string;
+  board_sent?: string;
+  board_resent?: string;
   error?: string;
 }>;
 
@@ -28,6 +30,12 @@ export default async function InvitePage({
 
   const lotsWithEmail = lots?.filter((l) => l.owner_email) ?? [];
   const lotsWithoutEmail = lots?.filter((l) => !l.owner_email) ?? [];
+
+  const { data: boardMembers } = await supabase
+    .from("profiles")
+    .select("id, email, role")
+    .eq("role", "board")
+    .order("email");
 
   // Cross-check against auth.users so we can show "Already signed up" vs
   // "Invite sent, awaiting click" status. Requires the Supabase secret key;
@@ -52,10 +60,10 @@ export default async function InvitePage({
   return (
     <main className="mx-auto flex max-w-4xl flex-col gap-6 px-6 py-8">
       <header>
-        <h1 className="text-2xl font-semibold tracking-tight">Invite homeowners</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">Invitations</h1>
         <p className="text-sm text-slate-600">
-          Send each homeowner a magic-link invite. Re-sending generates a fresh
-          link if they lost the original.
+          Invite board members and homeowners. Re-sending generates a fresh
+          link if the original was lost.
         </p>
       </header>
 
@@ -69,7 +77,60 @@ export default async function InvitePage({
           Fresh sign-in link sent to <strong>{params.resent}</strong>.
         </Notice>
       )}
+      {params.board_sent && (
+        <Notice tone="success">
+          Board invite sent to <strong>{params.board_sent}</strong>.
+        </Notice>
+      )}
+      {params.board_resent && (
+        <Notice tone="success">
+          <strong>{params.board_resent}</strong> already had an account — they
+          were promoted to board and emailed a fresh sign-in link.
+        </Notice>
+      )}
       {params.error && <Notice tone="error">{params.error}</Notice>}
+
+      <section className="space-y-2">
+        <h2 className="text-sm font-medium uppercase tracking-wide text-slate-500">
+          Board members ({boardMembers?.length ?? 0})
+        </h2>
+        <div className="space-y-3 rounded-lg border border-slate-200 bg-white p-4">
+          {boardMembers && boardMembers.length > 0 && (
+            <ul className="divide-y divide-slate-100 text-sm">
+              {boardMembers.map((m) => (
+                <li key={m.id} className="py-2 text-slate-700">
+                  {m.email}
+                </li>
+              ))}
+            </ul>
+          )}
+          <form action={inviteBoardMember} className="flex flex-wrap gap-2">
+            <input
+              type="email"
+              name="email"
+              required
+              placeholder="board-member@example.com"
+              className="flex-1 min-w-[16rem] rounded-md border border-slate-300 px-3 py-2 text-sm"
+            />
+            <button
+              type="submit"
+              className="rounded-md bg-slate-900 px-3 py-2 text-sm font-medium text-white hover:bg-slate-800"
+            >
+              Invite as board
+            </button>
+          </form>
+          <p className="text-xs text-slate-500">
+            Board invitees get full access on first sign-in — no SQL or follow-up
+            promotion needed.
+          </p>
+        </div>
+      </section>
+
+      <section className="space-y-2">
+        <h2 className="text-sm font-medium uppercase tracking-wide text-slate-500">
+          Homeowner invites
+        </h2>
+      </section>
 
       {!hasSecretKey && (
         <Notice tone="error">

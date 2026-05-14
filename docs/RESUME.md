@@ -11,6 +11,7 @@ Phase 1 of the Summer Meadows HOA portal is complete:
 - **M2 — Schema migrations + RLS policies** ✅
 - **M3 — Auth + member self-view (`/me`)** ✅
 - **M4 — Lot CRUD + invite flow** ✅
+- **M5 — Bootstrap & onboarding** ✅ (env-var founding board, HOA settings, CSV lot import, board-member invites, dashboard checklist)
 
 Phase 1 close-out remaining (small):
 - Vercel preview deploy
@@ -57,6 +58,14 @@ Then in **Supabase Dashboard → Authentication**:
 - Providers → Email: enable magic link, **disable signups** (invite-only)
 - URL Configuration → Site URL: production URL (or `http://localhost:3000` for now)
 - URL Configuration → Redirect URLs allowlist: add `http://localhost:3000/auth/callback` and the production callback
+
+Founding-board bootstrap (replaces the old `update profiles set role='board'`
+SQL step): the `/signup` flow handles it. A visitor enters their address; if
+it doesn't match any lot AND no board exists yet, they get an "Are you the
+president?" prompt with an attestation checkbox. On submit, a magic link is
+sent and the `handle_new_user()` trigger assigns `role='board'` to that
+first account. After that, the bootstrap branch is no longer offered and
+new accounts come via lot-matched homeowner signup or board invites.
 
 ## How to run locally
 
