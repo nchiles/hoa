@@ -75,6 +75,58 @@ Remaining for Phase 1 close-out (small):
 - Vercel preview deploy
 - Final privacy notice copy (current placeholder is acceptable for v1)
 
+### M5 — Bootstrap & onboarding ✅ DONE
+
+Pulled forward ahead of Phase 2 so a non-technical board can stand up the HOA
+from the UI — no SQL.
+
+- `supabase/migrations/20260513000000_m5_bootstrap.sql` — `hoa_settings`
+  singleton table (RLS: authenticated read, board update). Updates
+  `handle_new_user()` with two rules: (a) if no board profile exists yet,
+  the first user to sign in becomes the founding board member; (b)
+  otherwise honor `raw_user_meta_data->>'role' = 'board'` from
+  inviteBoardMember. No env var, no SQL step to bootstrap.
+- `src/app/(auth)/login/{page,actions}.tsx` — pure sign-in (magic link with
+  `shouldCreateUser: false`). New accounts go through `/signup`.
+- `src/app/(auth)/signup/{page,SignupClient,actions}.tsx` — address-based
+  signup flow. User enters their street address; we normalize and look up
+  against `lots.address`. Branches:
+  - **Address matches and lot has owner_email:** prompt for the user's email,
+    confirm it matches `owner_email` (case-insensitive), send a magic link
+    with `shouldCreateUser: true`. Trigger creates a member profile linked
+    to the lot.
+  - **Address matches, no owner_email yet:** dead-end — tell the user to ask
+    their board to add their email.
+  - **No address match AND no board exists:** "Are you the president?" path
+    — attestation checkbox + email, magic link with `shouldCreateUser: true`.
+    Trigger gives them `role='board'` because no board exists yet (re-checked
+    on submit to close the race).
+  - **No address match, board exists:** dead-end — tell the user to ask
+    their board.
+- Address normalization: lowercase, strip `[.,]`, collapse whitespace.
+  Lookup loads all lots (~43 rows) and matches in JS — cheap, robust, no
+  schema changes.
+- `src/lib/supabase/middleware.ts` — `/signup` added to `PUBLIC_PATHS`.
+- `src/app/(board)/admin/settings/{page,actions}.tsx` +
+  `src/lib/validators/hoaSettings.ts` — HOA name, contact email, mailing
+  address, fiscal-year-start month, default annual dues.
+- `src/app/(board)/lots/import/{page,actions,ImportClient}.tsx` +
+  `src/lib/validators/lotCsv.ts` — CSV upload → server-side parse +
+  per-row Zod validation + duplicate detection → preview table → bulk
+  insert. Hand-rolled RFC-4180-ish parser; no new dependency.
+- `src/app/(board)/admin/invite/actions.ts` — new `inviteBoardMember`
+  action that passes `data: { role: 'board' }` to
+  `inviteUserByEmail`. Existing-user fallback promotes the profile and
+  sends a fresh OTP.
+- `src/app/(board)/admin/invite/page.tsx` — board-members section above
+  the homeowner invite table; shows current board roster.
+- `src/app/(board)/dashboard/page.tsx` — onboarding checklist (HOA info,
+  lots, board, homeowners) with per-step CTA; collapses to "Setup
+  complete ✓" when all four are done. Existing Phase 1 stats kept below.
+- `src/app/(board)/layout.tsx` — Settings link in the board nav.
+- `.env.example`, `docs/RESUME.md` — replace the "flip role via psql"
+  instruction with the env-var bootstrap path.
+
 ## Critical files
 
 - `src/middleware.ts`

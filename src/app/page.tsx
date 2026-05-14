@@ -27,10 +27,16 @@ export default async function Home() {
         Member and board portal. Sign in to view your lot, dues status, and
         community finances.
       </p>
-      <div className="flex gap-3">
+      <div className="flex flex-wrap gap-3">
+        <Link
+          href="/signup"
+          className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
+        >
+          Sign up
+        </Link>
         <Link
           href="/login"
-          className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
+          className="rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
         >
           Sign in
         </Link>
