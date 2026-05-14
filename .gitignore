@@ -40,3 +40,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# claude code session data (worktrees, plans)
+.claude/
+
+# pencil design files
+*.pen
