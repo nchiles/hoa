@@ -21,7 +21,7 @@ export default async function EditLotPage({
   const { data: lot } = await supabase
     .from("lots")
     .select(
-      "id, lot_number, address, owner_name, owner_email, owner_phone, notes",
+      "id, lot_number, street_number, street_name, address, owner_name, owner_email, owner_phone, notes",
     )
     .eq("id", id)
     .maybeSingle();

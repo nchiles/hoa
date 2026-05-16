@@ -77,7 +77,9 @@ export function ImportClient() {
                     <td className="px-3 py-2 font-medium text-slate-900">
                       {r.lot_number}
                     </td>
-                    <td className="px-3 py-2 text-slate-700">{r.address}</td>
+                    <td className="px-3 py-2 text-slate-700">
+                      {`${r.street_number} ${r.street_name}`}
+                    </td>
                     <td className="px-3 py-2 text-slate-700">
                       {r.owner_name ?? "—"}
                     </td>

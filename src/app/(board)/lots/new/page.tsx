@@ -21,8 +21,8 @@ export default async function NewLotPage({
       <header>
         <h1 className="text-2xl font-semibold tracking-tight">Add lot</h1>
         <p className="text-sm text-slate-600">
-          Only lot number and address are required. If you add an owner email,
-          you can send an invite from the lot detail page.
+          Lot number, street number, and street name are required. If you add
+          an owner email, you can send an invite from the lot detail page.
         </p>
       </header>
       <LotForm

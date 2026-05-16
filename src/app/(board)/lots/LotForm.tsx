@@ -1,6 +1,7 @@
 type LotDefaults = {
   lot_number?: string | null;
-  address?: string | null;
+  street_number?: string | null;
+  street_name?: string | null;
   owner_name?: string | null;
   owner_email?: string | null;
   owner_phone?: string | null;
@@ -41,14 +42,28 @@ export function LotForm({
           />
         </Field>
 
-        <Field label="Address" htmlFor="address" required>
+        <Field label="Street number" htmlFor="street_number" required>
           <input
-            id="address"
-            name="address"
+            id="street_number"
+            name="street_number"
             type="text"
             required
-            maxLength={256}
-            defaultValue={defaults?.address ?? ""}
+            maxLength={32}
+            placeholder="1234"
+            defaultValue={defaults?.street_number ?? ""}
+            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500"
+          />
+        </Field>
+
+        <Field label="Street name" htmlFor="street_name" required>
+          <input
+            id="street_name"
+            name="street_name"
+            type="text"
+            required
+            maxLength={128}
+            placeholder="Meadow Ln"
+            defaultValue={defaults?.street_name ?? ""}
             className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500"
           />
         </Field>

@@ -20,7 +20,8 @@ const optionalEmail = z
 
 export const lotFormSchema = z.object({
   lot_number: z.string().trim().min(1, "Required").max(32),
-  address: z.string().trim().min(1, "Required").max(256),
+  street_number: z.string().trim().min(1, "Required").max(32),
+  street_name: z.string().trim().min(1, "Required").max(128),
   owner_name: optionalText(128),
   owner_email: optionalEmail,
   owner_phone: optionalText(32),
@@ -32,7 +33,8 @@ export type LotFormInput = z.infer<typeof lotFormSchema>;
 export function parseLotForm(formData: FormData) {
   return lotFormSchema.safeParse({
     lot_number: formData.get("lot_number"),
-    address: formData.get("address"),
+    street_number: formData.get("street_number"),
+    street_name: formData.get("street_name"),
     owner_name: formData.get("owner_name"),
     owner_email: formData.get("owner_email"),
     owner_phone: formData.get("owner_phone"),

@@ -28,7 +28,7 @@ export default async function HoaSettingsPage({
   const { data: settings } = await supabase
     .from("hoa_settings")
     .select(
-      "name, contact_email, mailing_address, fiscal_year_start_month, default_dues_amount_cents",
+      "name, contact_email, mailing_address, city, state, zip, fiscal_year_start_month, default_dues_amount_cents",
     )
     .eq("id", 1)
     .maybeSingle();
@@ -76,6 +76,45 @@ export default async function HoaSettingsPage({
             className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
           />
         </Field>
+
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <Field label="City" htmlFor="city">
+            <input
+              id="city"
+              name="city"
+              type="text"
+              maxLength={128}
+              defaultValue={settings?.city ?? ""}
+              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+            />
+          </Field>
+          <Field label="State" htmlFor="state">
+            <input
+              id="state"
+              name="state"
+              type="text"
+              maxLength={64}
+              placeholder="MI"
+              defaultValue={settings?.state ?? ""}
+              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+            />
+          </Field>
+          <Field label="ZIP" htmlFor="zip">
+            <input
+              id="zip"
+              name="zip"
+              type="text"
+              maxLength={16}
+              defaultValue={settings?.zip ?? ""}
+              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+            />
+          </Field>
+        </div>
+
+        <p className="-mt-2 text-xs text-slate-500">
+          City, state, and ZIP apply to the whole subdivision — lots only
+          store their street number and street name.
+        </p>
 
         <Field label="Mailing address" htmlFor="mailing_address">
           <textarea
