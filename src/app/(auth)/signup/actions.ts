@@ -19,22 +19,29 @@ export type SignupState =
 
 const emailSchema = z.email("Enter a valid email.");
 
-function normalizeAddress(s: string): string {
-  return s
-    .trim()
-    .toLowerCase()
-    .replace(/[.,]/g, "")
-    .replace(/\s+/g, " ");
-}
+type LookupRow = {
+  result:
+    | "matched"
+    | "matched_no_email"
+    | "no_match_bootstrap"
+    | "no_match_locked";
+  lot_address: string | null;
+  email_hint: string | null;
+};
 
-function emailHint(email: string): string {
-  const [local, domain] = email.split("@");
-  if (!domain) return "•••";
-  const masked =
-    local.length <= 2
-      ? local[0] + "•"
-      : local[0] + "•••" + local[local.length - 1];
-  return `${masked}@${domain}`;
+// Autocomplete for the address field. Returns lot addresses only (no owner
+// data) via a SECURITY DEFINER function, since /signup is unauthenticated and
+// RLS blocks direct reads of public.lots.
+export async function searchAddresses(
+  query: string,
+): Promise<{ id: string; address: string }[]> {
+  const q = query.trim();
+  if (q.length < 2) return [];
+  const supabase = await createClient();
+  const { data } = await supabase.rpc("search_lot_addresses", {
+    p_query: q,
+  });
+  return (data ?? []) as { id: string; address: string }[];
 }
 
 export async function signupAction(
@@ -51,36 +58,32 @@ export async function signupAction(
     if (!address) {
       return { stage: "idle", error: "Enter your home address." };
     }
-    const normalized = normalizeAddress(address);
 
-    const { data: lots } = await supabase
-      .from("lots")
-      .select("id, address, owner_email");
+    const { data, error } = await supabase.rpc("signup_address_lookup", {
+      p_address: address,
+    });
+    if (error) {
+      return { stage: "idle", error: error.message };
+    }
+    const row = (data?.[0] ?? null) as LookupRow | null;
+    if (!row) {
+      return { stage: "idle", error: "Could not check that address." };
+    }
 
-    const match = (lots ?? []).find(
-      (l) => normalizeAddress(l.address) === normalized,
-    );
-
-    if (match) {
-      if (match.owner_email) {
+    switch (row.result) {
+      case "matched":
         return {
           stage: "matched",
-          address: match.address,
-          emailHint: emailHint(match.owner_email),
+          address: row.lot_address ?? address,
+          emailHint: row.email_hint ?? "•••",
         };
-      }
-      return { stage: "matched_no_email", address: match.address };
+      case "matched_no_email":
+        return { stage: "matched_no_email", address: row.lot_address ?? address };
+      case "no_match_locked":
+        return { stage: "no_match_locked", address };
+      default:
+        return { stage: "no_match_bootstrap", address };
     }
-
-    // No address match. Decide which branch by whether a board already exists.
-    const { count: boardCount } = await supabase
-      .from("profiles")
-      .select("id", { count: "exact", head: true })
-      .eq("role", "board");
-    if ((boardCount ?? 0) === 0) {
-      return { stage: "no_match_bootstrap", address };
-    }
-    return { stage: "no_match_locked", address };
   }
 
   if (intent === "confirm_member") {
@@ -95,23 +98,19 @@ export async function signupAction(
       };
     }
     const email = emailParsed.data.toLowerCase();
-    const normalized = normalizeAddress(address);
 
-    const { data: lots } = await supabase
-      .from("lots")
-      .select("id, address, owner_email");
-    const lot = (lots ?? []).find(
-      (l) => normalizeAddress(l.address) === normalized,
+    const { data: ok, error: verifyErr } = await supabase.rpc(
+      "verify_lot_email",
+      { p_address: address, p_email: email },
     );
-
-    if (!lot || !lot.owner_email) {
-      return { stage: "idle", error: "We could not verify that address." };
+    if (verifyErr) {
+      return { stage: "idle", error: verifyErr.message };
     }
-    if (lot.owner_email.toLowerCase() !== email) {
+    if (!ok) {
       return {
         stage: "matched",
-        address: lot.address,
-        emailHint: emailHint(lot.owner_email),
+        address,
+        emailHint: "•••",
         error:
           "That email doesn't match the one on file for this address. Check with your board if you think this is wrong.",
       };
@@ -147,13 +146,15 @@ export async function signupAction(
       };
     }
 
-    // Re-check that no board exists. Closes the (tiny) race where two people
-    // hit the bootstrap path simultaneously.
-    const { count: boardCount } = await supabase
-      .from("profiles")
-      .select("id", { count: "exact", head: true })
-      .eq("role", "board");
-    if ((boardCount ?? 0) > 0) {
+    // Re-check via the same lookup: if a board now exists (or the address
+    // actually matches a lot) this returns something other than the
+    // bootstrap branch. Closes the race where two people hit /signup
+    // simultaneously on a fresh install.
+    const { data } = await supabase.rpc("signup_address_lookup", {
+      p_address: address,
+    });
+    const row = (data?.[0] ?? null) as LookupRow | null;
+    if (row && row.result !== "no_match_bootstrap") {
       return { stage: "no_match_locked", address };
     }
 

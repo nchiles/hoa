@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState } from "react";
-import { signupAction, type SignupState } from "./actions";
+import { useActionState, useEffect, useRef, useState } from "react";
+import { searchAddresses, signupAction, type SignupState } from "./actions";
 
 const initial: SignupState = { stage: "idle" };
 
@@ -169,26 +169,9 @@ export function SignupClient() {
   return (
     <form action={formAction} className="flex flex-col gap-4">
       <input type="hidden" name="intent" value="lookup_address" />
-      <Field label="Where do you live?" htmlFor="address">
-        <input
-          id="address"
-          name="address"
-          type="text"
-          required
-          placeholder="1234 Meadow Ln"
-          className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
-        />
-        <p className="text-xs text-slate-500">
-          Enter the street address of your home.
-        </p>
-      </Field>
-
-      {state.stage === "idle" && state.error && (
-        <div className="rounded-md border border-rose-200 bg-rose-50 p-3 text-sm text-rose-900">
-          {state.error}
-        </div>
-      )}
-
+      <AddressAutocomplete
+        error={state.stage === "idle" ? state.error : undefined}
+      />
       <div className="flex justify-end">
         <button
           type="submit"
@@ -199,6 +182,116 @@ export function SignupClient() {
         </button>
       </div>
     </form>
+  );
+}
+
+function AddressAutocomplete({ error }: { error?: string }) {
+  const [value, setValue] = useState("");
+  const [suggestions, setSuggestions] = useState<
+    { id: string; address: string }[]
+  >([]);
+  const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  // True once the user picked a suggestion (or retyped an exact suggestion).
+  const [picked, setPicked] = useState(false);
+  const boxRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (picked) return;
+    const q = value.trim();
+    if (q.length < 2) {
+      setSuggestions([]);
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    const t = setTimeout(async () => {
+      const results = await searchAddresses(q);
+      setSuggestions(results);
+      setOpen(true);
+      setLoading(false);
+    }, 250);
+    return () => clearTimeout(t);
+  }, [value, picked]);
+
+  useEffect(() => {
+    function onDocClick(e: MouseEvent) {
+      if (boxRef.current && !boxRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", onDocClick);
+    return () => document.removeEventListener("mousedown", onDocClick);
+  }, []);
+
+  function choose(addr: string) {
+    setValue(addr);
+    setPicked(true);
+    setOpen(false);
+    setSuggestions([]);
+  }
+
+  return (
+    <div className="flex flex-col gap-1" ref={boxRef}>
+      <label htmlFor="address" className="text-sm font-medium text-slate-700">
+        Where do you live?
+      </label>
+      <div className="relative">
+        <input
+          id="address"
+          name="address"
+          type="text"
+          required
+          autoComplete="off"
+          value={value}
+          placeholder="Start typing your street address…"
+          onChange={(e) => {
+            setValue(e.target.value);
+            setPicked(false);
+          }}
+          onFocus={() => suggestions.length > 0 && setOpen(true)}
+          className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+        />
+        {open && suggestions.length > 0 && (
+          <ul className="absolute z-10 mt-1 max-h-56 w-full overflow-auto rounded-md border border-slate-200 bg-white shadow-lg">
+            {suggestions.map((s) => (
+              <li key={s.id}>
+                <button
+                  type="button"
+                  onClick={() => choose(s.address)}
+                  className="block w-full px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50"
+                >
+                  {s.address}
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      {picked ? (
+        <p className="text-xs font-medium text-emerald-700">
+          ✓ We found this address in the HOA records.
+        </p>
+      ) : loading ? (
+        <p className="text-xs text-slate-400">Searching…</p>
+      ) : value.trim().length >= 2 && suggestions.length === 0 ? (
+        <p className="text-xs text-slate-500">
+          No match yet. Keep typing, or continue — if your home isn&rsquo;t
+          listed we&rsquo;ll help you set up the HOA.
+        </p>
+      ) : (
+        <p className="text-xs text-slate-500">
+          Pick your address from the list as it appears.
+        </p>
+      )}
+
+      {error && (
+        <div className="mt-1 rounded-md border border-rose-200 bg-rose-50 p-3 text-sm text-rose-900">
+          {error}
+        </div>
+      )}
+    </div>
   );
 }
 
