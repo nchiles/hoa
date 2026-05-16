@@ -39,6 +39,12 @@ export function SignupClient() {
         <input type="hidden" name="intent" value="confirm_member" />
         <input type="hidden" name="address" value={state.address} />
 
+        {state.error && (
+          <div className="rounded-md border border-rose-200 bg-rose-50 p-3 text-sm text-rose-900">
+            {state.error}
+          </div>
+        )}
+
         <Field label="Your email" htmlFor="email">
           <input
             id="email"
@@ -97,6 +103,12 @@ export function SignupClient() {
 
         <input type="hidden" name="intent" value="onboard_president" />
         <input type="hidden" name="address" value={state.address} />
+
+        {state.error && (
+          <div className="rounded-md border border-rose-200 bg-rose-50 p-3 text-sm text-rose-900">
+            {state.error}
+          </div>
+        )}
 
         <Field label="Your email" htmlFor="email">
           <input
