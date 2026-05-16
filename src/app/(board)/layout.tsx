@@ -26,6 +26,9 @@ export default async function BoardLayout({
               <Link href="/lots" className="hover:text-slate-900">
                 Lots
               </Link>
+              <Link href="/admin/approvals" className="hover:text-slate-900">
+                Approvals
+              </Link>
               <Link href="/admin/invite" className="hover:text-slate-900">
                 Invite
               </Link>
