@@ -23,7 +23,8 @@ const optionalEmail = z.preprocess(
 
 export const csvRowSchema = z.object({
   lot_number: z.string().trim().min(1, "lot_number required").max(32),
-  address: z.string().trim().min(1, "address required").max(256),
+  street_number: z.string().trim().min(1, "street_number required").max(32),
+  street_name: z.string().trim().min(1, "street_name required").max(128),
   owner_name: optionalText(128),
   owner_email: optionalEmail,
   owner_phone: optionalText(32),
@@ -34,7 +35,8 @@ export type CsvRow = z.infer<typeof csvRowSchema>;
 
 export const REQUIRED_HEADERS = [
   "lot_number",
-  "address",
+  "street_number",
+  "street_name",
   "owner_name",
   "owner_email",
   "owner_phone",
@@ -123,7 +125,8 @@ export function parseAndValidateCsv(text: string): CsvParseResult {
     const raw = grid[r];
     const parsed = csvRowSchema.safeParse({
       lot_number: raw[idx.lot_number],
-      address: raw[idx.address],
+      street_number: raw[idx.street_number],
+      street_name: raw[idx.street_name],
       owner_name: raw[idx.owner_name],
       owner_email: raw[idx.owner_email],
       owner_phone: raw[idx.owner_phone],

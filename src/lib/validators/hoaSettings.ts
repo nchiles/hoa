@@ -21,6 +21,9 @@ export const hoaSettingsSchema = z.object({
   name: z.string().trim().min(1, "Required").max(128),
   contact_email: optionalEmail,
   mailing_address: optionalText(512),
+  city: optionalText(128),
+  state: optionalText(64),
+  zip: optionalText(16),
   fiscal_year_start_month: z.coerce
     .number()
     .int()
@@ -40,6 +43,9 @@ export function parseHoaSettings(formData: FormData) {
     name: formData.get("name"),
     contact_email: formData.get("contact_email"),
     mailing_address: formData.get("mailing_address"),
+    city: formData.get("city"),
+    state: formData.get("state"),
+    zip: formData.get("zip"),
     fiscal_year_start_month: formData.get("fiscal_year_start_month"),
     default_dues_amount_cents: formData.get("default_dues_amount_cents"),
   });

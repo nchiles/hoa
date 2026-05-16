@@ -4,7 +4,8 @@ import { ImportClient } from "./ImportClient";
 
 const COLUMNS: { name: string; required: boolean; note: string }[] = [
   { name: "lot_number", required: true, note: "Unique per lot, e.g. 12" },
-  { name: "address", required: true, note: "Street address" },
+  { name: "street_number", required: true, note: "House number, e.g. 1234" },
+  { name: "street_name", required: true, note: "e.g. Meadow Ln" },
   { name: "owner_name", required: false, note: "Leave blank if vacant" },
   { name: "owner_email", required: false, note: "Needed to invite them later" },
   { name: "owner_phone", required: false, note: "Optional" },
