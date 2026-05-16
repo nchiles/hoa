@@ -63,16 +63,35 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // Authenticated visitor on a board-only route: confirm role server-side.
-  // RLS still enforces the real boundary; this is just a friendlier redirect.
-  if (user && isBoardOnly(pathname)) {
+  // Authenticated: resolve the profile once for status + role routing.
+  // RLS still enforces the real data boundary; these are friendly redirects.
+  if (user && !pathname.startsWith("/auth/")) {
     const { data: profile } = await supabase
       .from("profiles")
-      .select("role")
+      .select("role, status")
       .eq("id", user.id)
       .maybeSingle();
 
-    if (profile?.role !== "board") {
+    const isPending =
+      profile?.status === "pending" || profile?.status === "rejected";
+
+    // Pending/rejected users can only see the holding screen.
+    if (isPending && pathname !== "/pending") {
+      const url = request.nextUrl.clone();
+      url.pathname = "/pending";
+      url.search = "";
+      return NextResponse.redirect(url);
+    }
+
+    // An active/approved user has no reason to sit on the holding screen.
+    if (!isPending && pathname === "/pending") {
+      const url = request.nextUrl.clone();
+      url.pathname = profile?.role === "board" ? "/dashboard" : "/me";
+      url.search = "";
+      return NextResponse.redirect(url);
+    }
+
+    if (isBoardOnly(pathname) && profile?.role !== "board") {
       const url = request.nextUrl.clone();
       url.pathname = "/me";
       url.search = "";
