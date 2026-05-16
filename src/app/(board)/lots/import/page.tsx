@@ -1,7 +1,15 @@
 import Link from "next/link";
 import { requireBoard } from "@/lib/auth/requireRole";
-import { REQUIRED_HEADERS } from "@/lib/validators/lotCsv";
 import { ImportClient } from "./ImportClient";
+
+const COLUMNS: { name: string; required: boolean; note: string }[] = [
+  { name: "lot_number", required: true, note: "Unique per lot, e.g. 12" },
+  { name: "address", required: true, note: "Street address" },
+  { name: "owner_name", required: false, note: "Leave blank if vacant" },
+  { name: "owner_email", required: false, note: "Needed to invite them later" },
+  { name: "owner_phone", required: false, note: "Optional" },
+  { name: "notes", required: false, note: "Board-only, optional" },
+];
 
 type SearchParams = Promise<{ error?: string }>;
 
@@ -40,14 +48,47 @@ export default async function ImportLotsPage({
         </div>
       )}
 
-      <section className="rounded-md border border-slate-200 bg-white p-4 text-sm text-slate-700">
-        <p className="font-medium">Expected header row:</p>
-        <pre className="mt-1 overflow-x-auto rounded bg-slate-50 px-3 py-2 font-mono text-xs">
-          {REQUIRED_HEADERS.join(",")}
-        </pre>
-        <p className="mt-2 text-xs text-slate-500">
-          Sample row: <code>12,1234 Meadow Ln,Alice Example,alice@example.com,616-555-0100,</code>
-        </p>
+      <section className="rounded-md border border-slate-200 bg-white p-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="text-sm font-medium text-slate-800">
+              Not sure how to format it?
+            </p>
+            <p className="text-sm text-slate-600">
+              Download the template, fill in your lots, and upload it back.
+            </p>
+          </div>
+          <a
+            href="/lot-import-template.csv"
+            download
+            className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
+          >
+            Download CSV template
+          </a>
+        </div>
+
+        <table className="mt-4 w-full text-sm">
+          <thead className="text-left text-xs uppercase tracking-wide text-slate-500">
+            <tr>
+              <th className="py-1 pr-4 font-medium">Column</th>
+              <th className="py-1 pr-4 font-medium">Required</th>
+              <th className="py-1 font-medium">Notes</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {COLUMNS.map((c) => (
+              <tr key={c.name}>
+                <td className="py-1.5 pr-4 font-mono text-xs text-slate-800">
+                  {c.name}
+                </td>
+                <td className="py-1.5 pr-4 text-slate-600">
+                  {c.required ? "Yes" : "Optional"}
+                </td>
+                <td className="py-1.5 text-slate-600">{c.note}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </section>
 
       <ImportClient />
