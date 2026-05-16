@@ -55,9 +55,13 @@ npx supabase db push
 ```
 
 Then in **Supabase Dashboard → Authentication**:
-- Providers → Email: enable magic link, **enable signups**. (App-level gating
-  lives in `/signup`: `shouldCreateUser: false` everywhere except the address-
-  matched homeowner path and the founding-president path.)
+- Providers → Email: enable magic link. **Sign In / Providers → "Allow new
+  users to sign up" MUST be ON.** This is non-obvious and was a real blocker:
+  if it's off, `signInWithOtp({ shouldCreateUser: true })` fails and the
+  `/signup` president/homeowner paths silently do nothing useful. App-level
+  gating still keeps it invite-only — `shouldCreateUser` is `false`
+  everywhere except the address-matched homeowner path and the founding-
+  president path.
 - URL Configuration → Site URL: production URL (or `http://localhost:3000` for now)
 - URL Configuration → Redirect URLs allowlist: add `http://localhost:3000/auth/callback` and the production callback
 
