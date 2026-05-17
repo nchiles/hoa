@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { requireBoard } from "@/lib/auth/requireRole";
 import {
   fetchParcelsNear,
-  parcelCenterByAddress,
+  parcelCenterByPpn,
   searchParcelAddresses,
   splitParcelAddress,
   type ParcelCollection,
@@ -32,16 +32,17 @@ export async function lookupNeighborhood(
 ): Promise<MapState> {
   await requireBoard();
   const address = String(formData.get("address") ?? "").trim();
-  if (!address) {
+  const ppn = String(formData.get("ppn") ?? "").trim();
+  if (!address || !ppn) {
     return { stage: "idle", error: "Pick an address from the list." };
   }
 
-  const point = await parcelCenterByAddress(address);
+  const point = await parcelCenterByPpn(ppn);
   if (!point) {
     return {
       stage: "idle",
       error:
-        "Couldn't locate that address. Pick one from the suggestions list.",
+        "Couldn't locate that parcel. Pick another address from the list.",
     };
   }
 

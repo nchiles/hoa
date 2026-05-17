@@ -171,6 +171,7 @@ function AddressPicker({
   disabled: boolean;
 }) {
   const [value, setValue] = useState("");
+  const [ppn, setPpn] = useState("");
   const [suggestions, setSuggestions] = useState<
     { ppn: string; address: string }[]
   >([]);
@@ -224,6 +225,7 @@ function AddressPicker({
           onChange={(e) => {
             setValue(e.target.value);
             setPicked(false);
+            setPpn("");
           }}
           onFocus={() => suggestions.length > 0 && setOpen(true)}
           className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
@@ -236,6 +238,7 @@ function AddressPicker({
                   type="button"
                   onClick={() => {
                     setValue(s.address);
+                    setPpn(s.ppn);
                     setPicked(true);
                     setOpen(false);
                     setSuggestions([]);
@@ -249,6 +252,8 @@ function AddressPicker({
           </ul>
         )}
       </div>
+
+      <input type="hidden" name="ppn" value={ppn} />
 
       {picked ? (
         <p className="text-xs font-medium text-emerald-700">

@@ -77,15 +77,18 @@ export async function searchParcelAddresses(
   return out;
 }
 
-// One parcel by exact site address, with geometry, plus a representative
+// One parcel by its PPN id, with geometry, plus a representative
 // interior-ish point (mean of the first ring) to center/seed the map.
-export async function parcelCenterByAddress(
-  address: string,
+// PPN is a stable numeric id — far more reliable than re-matching the
+// site-address string, which is often space-padded/inconsistently cased
+// in parcel data (so `PROPERTYADDRESS = '...'` misses even when LIKE hit).
+export async function parcelCenterByPpn(
+  ppn: string,
 ): Promise<{ lon: number; lat: number } | null> {
-  const a = address.trim().toUpperCase().replace(/'/g, "''");
-  if (!a) return null;
+  const n = String(ppn).trim();
+  if (!n || !/^\d+(\.\d+)?$/.test(n)) return null;
   const url = new URL(KENT_PARCEL_QUERY);
-  url.searchParams.set("where", `PROPERTYADDRESS = '${a}'`);
+  url.searchParams.set("where", `PPN = ${n}`);
   url.searchParams.set("outFields", "PPN");
   url.searchParams.set("returnGeometry", "true");
   url.searchParams.set("outSR", "4326");
