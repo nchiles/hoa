@@ -4,15 +4,15 @@ import { redirect } from "next/navigation";
 import { requireBoard } from "@/lib/auth/requireRole";
 import {
   fetchParcelsNear,
-  parcelCenterByPpn,
   searchParcelAddresses,
   splitParcelAddress,
+  type AddressSuggestion,
   type ParcelCollection,
 } from "@/lib/geo/kentParcels";
 
 export async function searchAddresses(
   query: string,
-): Promise<{ ppn: string; address: string }[]> {
+): Promise<AddressSuggestion[]> {
   await requireBoard();
   return searchParcelAddresses(query);
 }
@@ -32,21 +32,13 @@ export async function lookupNeighborhood(
 ): Promise<MapState> {
   await requireBoard();
   const address = String(formData.get("address") ?? "").trim();
-  const ppn = String(formData.get("ppn") ?? "").trim();
-  if (!address || !ppn) {
+  const lon = Number(formData.get("lon"));
+  const lat = Number(formData.get("lat"));
+  if (!address || !Number.isFinite(lon) || !Number.isFinite(lat)) {
     return { stage: "idle", error: "Pick an address from the list." };
   }
 
-  const point = await parcelCenterByPpn(ppn);
-  if (!point) {
-    return {
-      stage: "idle",
-      error:
-        "Couldn't locate that parcel. Pick another address from the list.",
-    };
-  }
-
-  const parcels = await fetchParcelsNear(point.lon, point.lat);
+  const parcels = await fetchParcelsNear(lon, lat);
   if (!parcels) {
     return {
       stage: "idle",
@@ -63,7 +55,7 @@ export async function lookupNeighborhood(
 
   return {
     stage: "loaded",
-    center: { lon: point.lon, lat: point.lat },
+    center: { lon, lat },
     matched: address,
     parcels,
   };

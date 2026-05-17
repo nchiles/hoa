@@ -48,59 +48,11 @@ export async function fetchParcelsNear(
   return data;
 }
 
-// Address typeahead, sourced from the parcel dataset itself so every
-// suggestion is a real, mappable parcel. Kent County, MI only.
-export async function searchParcelAddresses(
-  query: string,
-): Promise<{ ppn: string; address: string }[]> {
-  const q = query.trim().toUpperCase().replace(/'/g, "''");
-  if (q.length < 3) return [];
-  const url = new URL(KENT_PARCEL_QUERY);
-  url.searchParams.set("where", `PROPERTYADDRESS LIKE '${q}%'`);
-  url.searchParams.set("outFields", "PPN,PROPERTYADDRESS");
-  url.searchParams.set("returnGeometry", "false");
-  url.searchParams.set("orderByFields", "PROPERTYADDRESS");
-  url.searchParams.set("resultRecordCount", "8");
-  url.searchParams.set("f", "json");
-
-  const res = await fetch(url, { cache: "no-store" });
-  if (!res.ok) return [];
-  const data = await res.json();
-  const seen = new Set<string>();
-  const out: { ppn: string; address: string }[] = [];
-  for (const f of data?.features ?? []) {
-    const a = String(f?.attributes?.PROPERTYADDRESS ?? "").trim();
-    if (!a || seen.has(a)) continue;
-    seen.add(a);
-    out.push({ ppn: String(f?.attributes?.PPN ?? a), address: a });
-  }
-  return out;
-}
-
-// One parcel by its PPN id, with geometry, plus a representative
-// interior-ish point (mean of the first ring) to center/seed the map.
-// PPN is a stable numeric id — far more reliable than re-matching the
-// site-address string, which is often space-padded/inconsistently cased
-// in parcel data (so `PROPERTYADDRESS = '...'` misses even when LIKE hit).
-export async function parcelCenterByPpn(
-  ppn: string,
-): Promise<{ lon: number; lat: number } | null> {
-  const n = String(ppn).trim();
-  if (!n || !/^\d+(\.\d+)?$/.test(n)) return null;
-  const url = new URL(KENT_PARCEL_QUERY);
-  url.searchParams.set("where", `PPN = ${n}`);
-  url.searchParams.set("outFields", "PPN");
-  url.searchParams.set("returnGeometry", "true");
-  url.searchParams.set("outSR", "4326");
-  url.searchParams.set("resultRecordCount", "1");
-  url.searchParams.set("f", "geojson");
-
-  const res = await fetch(url, { cache: "no-store" });
-  if (!res.ok) return null;
-  const data = (await res.json()) as ParcelCollection;
-  const geom = data?.features?.[0]?.geometry as
+function ringCenter(
+  geom:
     | { type: string; coordinates: number[][][] | number[][][][] }
-    | undefined;
+    | undefined,
+): { lon: number; lat: number } | null {
   if (!geom) return null;
   const ring =
     geom.type === "MultiPolygon"
@@ -114,6 +66,58 @@ export async function parcelCenterByPpn(
     sy += y;
   }
   return { lon: sx / ring.length, lat: sy / ring.length };
+}
+
+export type AddressSuggestion = {
+  ppn: string;
+  address: string;
+  lon: number;
+  lat: number;
+};
+
+// Address typeahead, sourced from the parcel dataset itself so every
+// suggestion is a real, mappable parcel. We fetch geometry here and
+// compute each parcel's center up front, so picking a suggestion needs
+// NO second lookup — avoids re-matching on the space-padded address
+// string or the float PPN field (both unreliable for equality).
+// Kent County, MI only.
+export async function searchParcelAddresses(
+  query: string,
+): Promise<AddressSuggestion[]> {
+  const q = query.trim().toUpperCase().replace(/'/g, "''");
+  if (q.length < 3) return [];
+  const url = new URL(KENT_PARCEL_QUERY);
+  url.searchParams.set("where", `PROPERTYADDRESS LIKE '${q}%'`);
+  url.searchParams.set("outFields", "PPN,PROPERTYADDRESS");
+  url.searchParams.set("returnGeometry", "true");
+  url.searchParams.set("outSR", "4326");
+  url.searchParams.set("orderByFields", "PROPERTYADDRESS");
+  url.searchParams.set("resultRecordCount", "8");
+  url.searchParams.set("f", "geojson");
+
+  const res = await fetch(url, { cache: "no-store" });
+  if (!res.ok) return [];
+  const data = (await res.json()) as ParcelCollection;
+  const seen = new Set<string>();
+  const out: AddressSuggestion[] = [];
+  for (const f of data?.features ?? []) {
+    const a = String(f?.properties?.PROPERTYADDRESS ?? "").trim();
+    if (!a || seen.has(a)) continue;
+    const center = ringCenter(
+      f.geometry as
+        | { type: string; coordinates: number[][][] | number[][][][] }
+        | undefined,
+    );
+    if (!center) continue;
+    seen.add(a);
+    out.push({
+      ppn: String(f?.properties?.PPN ?? a),
+      address: a,
+      lon: center.lon,
+      lat: center.lat,
+    });
+  }
+  return out;
 }
 
 // "1234 MEADOW LN" → { street_number: "1234", street_name: "Meadow Ln" }.

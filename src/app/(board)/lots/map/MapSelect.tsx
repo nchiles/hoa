@@ -171,9 +171,12 @@ function AddressPicker({
   disabled: boolean;
 }) {
   const [value, setValue] = useState("");
-  const [ppn, setPpn] = useState("");
+  const [coords, setCoords] = useState<{ lon: string; lat: string }>({
+    lon: "",
+    lat: "",
+  });
   const [suggestions, setSuggestions] = useState<
-    { ppn: string; address: string }[]
+    { ppn: string; address: string; lon: number; lat: number }[]
   >([]);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -225,7 +228,7 @@ function AddressPicker({
           onChange={(e) => {
             setValue(e.target.value);
             setPicked(false);
-            setPpn("");
+            setCoords({ lon: "", lat: "" });
           }}
           onFocus={() => suggestions.length > 0 && setOpen(true)}
           className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
@@ -238,7 +241,10 @@ function AddressPicker({
                   type="button"
                   onClick={() => {
                     setValue(s.address);
-                    setPpn(s.ppn);
+                    setCoords({
+                      lon: String(s.lon),
+                      lat: String(s.lat),
+                    });
                     setPicked(true);
                     setOpen(false);
                     setSuggestions([]);
@@ -253,7 +259,8 @@ function AddressPicker({
         )}
       </div>
 
-      <input type="hidden" name="ppn" value={ppn} />
+      <input type="hidden" name="lon" value={coords.lon} />
+      <input type="hidden" name="lat" value={coords.lat} />
 
       {picked ? (
         <p className="text-xs font-medium text-emerald-700">
