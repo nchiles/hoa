@@ -2,7 +2,10 @@
 
 import { redirect } from "next/navigation";
 import { requireBoard } from "@/lib/auth/requireRole";
-import { geocodeAddress } from "@/lib/geo/geocode";
+import {
+  searchAddressSuggestions,
+  type AddressSuggestion,
+} from "@/lib/geo/photon";
 import {
   fetchParcelsInBbox,
   splitParcelAddress,
@@ -17,33 +20,27 @@ export type MapState =
       matched: string;
     };
 
-// One-time: geocode the board member's address to a point so the map
-// opens on their neighborhood. No parcels here — those load by viewport.
+// Address autocomplete for the map-centering field (geocoder, not parcels).
+export async function searchAddresses(
+  query: string,
+): Promise<AddressSuggestion[]> {
+  await requireBoard();
+  return searchAddressSuggestions(query);
+}
+
+// The picked suggestion already carries coordinates — just open the map.
 export async function lookupNeighborhood(
   _prev: MapState,
   formData: FormData,
 ): Promise<MapState> {
   await requireBoard();
-  const address = String(formData.get("address") ?? "").trim();
-  if (!address) {
-    return { stage: "idle", error: "Enter an address to center the map." };
+  const matched = String(formData.get("label") ?? "").trim();
+  const lon = Number(formData.get("lon"));
+  const lat = Number(formData.get("lat"));
+  if (!matched || !Number.isFinite(lon) || !Number.isFinite(lat)) {
+    return { stage: "idle", error: "Pick an address from the list." };
   }
-
-  const point = await geocodeAddress(address);
-  if (!point) {
-    return {
-      stage: "idle",
-      error:
-        "Couldn't find that address. Add city and state, e.g. " +
-        "“123 Main St, Grand Rapids, MI”.",
-    };
-  }
-
-  return {
-    stage: "loaded",
-    center: { lon: point.lon, lat: point.lat },
-    matched: point.matched,
-  };
+  return { stage: "loaded", center: { lon, lat }, matched };
 }
 
 // Parcels for the current map viewport. Called as the user pans/zooms.
