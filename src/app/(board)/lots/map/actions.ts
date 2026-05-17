@@ -2,12 +2,20 @@
 
 import { redirect } from "next/navigation";
 import { requireBoard } from "@/lib/auth/requireRole";
-import { geocodeAddress } from "@/lib/geo/geocode";
 import {
   fetchParcelsNear,
+  parcelCenterByAddress,
+  searchParcelAddresses,
   splitParcelAddress,
   type ParcelCollection,
 } from "@/lib/geo/kentParcels";
+
+export async function searchAddresses(
+  query: string,
+): Promise<{ ppn: string; address: string }[]> {
+  await requireBoard();
+  return searchParcelAddresses(query);
+}
 
 export type MapState =
   | { stage: "idle"; error?: string }
@@ -24,13 +32,16 @@ export async function lookupNeighborhood(
 ): Promise<MapState> {
   await requireBoard();
   const address = String(formData.get("address") ?? "").trim();
-  if (!address) return { stage: "idle", error: "Enter an address." };
+  if (!address) {
+    return { stage: "idle", error: "Pick an address from the list." };
+  }
 
-  const point = await geocodeAddress(address);
+  const point = await parcelCenterByAddress(address);
   if (!point) {
     return {
       stage: "idle",
-      error: "Couldn't find that address. Check spelling and try again.",
+      error:
+        "Couldn't locate that address. Pick one from the suggestions list.",
     };
   }
 
@@ -52,7 +63,7 @@ export async function lookupNeighborhood(
   return {
     stage: "loaded",
     center: { lon: point.lon, lat: point.lat },
-    matched: point.matched,
+    matched: address,
     parcels,
   };
 }
