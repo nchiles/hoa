@@ -6,11 +6,15 @@ import { useActionState, useEffect, useRef, useState } from "react";
 import {
   createLotsFromParcels,
   lookupNeighborhood,
-  searchAddresses,
+  parcelsInView,
   type MapState,
 } from "./actions";
 
 const initial: MapState = { stage: "idle" };
+
+// Below this zoom a viewport query would pull too many parcels to be
+// useful (and the service caps at 1000). Prompt the user to zoom in.
+const MIN_PARCEL_ZOOM = 16;
 
 const OSM_STYLE: maplibregl.StyleSpecification = {
   version: 8,
@@ -25,6 +29,11 @@ const OSM_STYLE: maplibregl.StyleSpecification = {
   layers: [{ id: "osm", type: "raster", source: "osm" }],
 };
 
+const EMPTY: GeoJSON.FeatureCollection = {
+  type: "FeatureCollection",
+  features: [],
+};
+
 export function MapSelect() {
   const [state, formAction, isPending] = useActionState(
     lookupNeighborhood,
@@ -34,7 +43,35 @@ export function MapSelect() {
   if (state.stage !== "loaded") {
     return (
       <form action={formAction} className="flex flex-col gap-3">
-        <AddressPicker error={state.error} disabled={isPending} />
+        <label htmlFor="address" className="text-sm font-medium text-slate-700">
+          An address in your neighborhood
+        </label>
+        <input
+          id="address"
+          name="address"
+          type="text"
+          required
+          placeholder="123 Main St, Grand Rapids, MI"
+          className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+        />
+        <p className="text-xs text-slate-500">
+          Just used to center the map — you&rsquo;ll pick the actual lots on
+          the map next. Prototype covers Kent County, MI only.
+        </p>
+        {state.error && (
+          <div className="rounded-md border border-rose-200 bg-rose-50 p-3 text-sm text-rose-900">
+            {state.error}
+          </div>
+        )}
+        <div>
+          <button
+            type="submit"
+            disabled={isPending}
+            className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
+          >
+            {isPending ? "Locating…" : "Open the map"}
+          </button>
+        </div>
       </form>
     );
   }
@@ -49,10 +86,11 @@ function ParcelMap({
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
-  // ppn -> site address, for the rows we'll create.
   const [selected, setSelected] = useState<Record<string, string>>({});
   const selectedRef = useRef(selected);
   selectedRef.current = selected;
+  const [zoomedOut, setZoomedOut] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
@@ -64,10 +102,57 @@ function ParcelMap({
     });
     mapRef.current = map;
 
+    let timer: ReturnType<typeof setTimeout> | null = null;
+
+    function reapplySelection() {
+      for (const ppn of Object.keys(selectedRef.current)) {
+        try {
+          map.setFeatureState(
+            { source: "parcels", id: ppn },
+            { selected: true },
+          );
+        } catch {
+          /* feature not in current viewport — fine */
+        }
+      }
+    }
+
+    async function loadViewport() {
+      if (map.getZoom() < MIN_PARCEL_ZOOM) {
+        setZoomedOut(true);
+        (map.getSource("parcels") as maplibregl.GeoJSONSource)?.setData(
+          EMPTY,
+        );
+        return;
+      }
+      setZoomedOut(false);
+      setLoading(true);
+      const b = map.getBounds();
+      try {
+        const fc = await parcelsInView(
+          b.getWest(),
+          b.getSouth(),
+          b.getEast(),
+          b.getNorth(),
+        );
+        (map.getSource("parcels") as maplibregl.GeoJSONSource)?.setData(
+          fc as unknown as GeoJSON.FeatureCollection,
+        );
+        reapplySelection();
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    function scheduleLoad() {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(loadViewport, 300);
+    }
+
     map.on("load", () => {
       map.addSource("parcels", {
         type: "geojson",
-        data: state.parcels as unknown as GeoJSON.FeatureCollection,
+        data: EMPTY,
         promoteId: "PPN",
       });
       map.addLayer({
@@ -95,7 +180,10 @@ function ParcelMap({
         source: "parcels",
         paint: { "line-color": "#334155", "line-width": 1 },
       });
+      loadViewport();
     });
+
+    map.on("moveend", scheduleLoad);
 
     map.on("click", "parcels-fill", (e) => {
       const f = e.features?.[0];
@@ -124,6 +212,7 @@ function ParcelMap({
     });
 
     return () => {
+      if (timer) clearTimeout(timer);
       map.remove();
       mapRef.current = null;
     };
@@ -137,13 +226,25 @@ function ParcelMap({
   return (
     <div className="flex flex-col gap-3">
       <div className="rounded-md border border-slate-200 bg-white p-3 text-sm text-slate-600">
-        Showing parcels near <strong>{state.matched}</strong>. Click the lots
-        that belong to your HOA, then add them.
+        Centered on <strong>{state.matched}</strong>. Pan/zoom to your
+        neighborhood and click the lots that belong to your HOA.
       </div>
-      <div
-        ref={containerRef}
-        className="h-[60vh] w-full overflow-hidden rounded-lg border border-slate-200"
-      />
+      <div className="relative">
+        <div
+          ref={containerRef}
+          className="h-[60vh] w-full overflow-hidden rounded-lg border border-slate-200"
+        />
+        {zoomedOut && (
+          <div className="pointer-events-none absolute left-1/2 top-3 -translate-x-1/2 rounded-md bg-slate-900/80 px-3 py-1.5 text-xs font-medium text-white">
+            Zoom in to load parcels
+          </div>
+        )}
+        {loading && !zoomedOut && (
+          <div className="pointer-events-none absolute right-3 top-3 rounded-md bg-white/90 px-3 py-1.5 text-xs font-medium text-slate-700 shadow">
+            Loading parcels…
+          </div>
+        )}
+      </div>
       <div className="flex items-center justify-between">
         <p className="text-sm text-slate-600">
           {count} parcel{count === 1 ? "" : "s"} selected
@@ -158,137 +259,6 @@ function ParcelMap({
             Add selected lots
           </button>
         </form>
-      </div>
-    </div>
-  );
-}
-
-function AddressPicker({
-  error,
-  disabled,
-}: {
-  error?: string;
-  disabled: boolean;
-}) {
-  const [value, setValue] = useState("");
-  const [coords, setCoords] = useState<{ lon: string; lat: string }>({
-    lon: "",
-    lat: "",
-  });
-  const [suggestions, setSuggestions] = useState<
-    { ppn: string; address: string; lon: number; lat: number }[]
-  >([]);
-  const [open, setOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [picked, setPicked] = useState(false);
-  const boxRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (picked) return;
-    const q = value.trim();
-    if (q.length < 3) {
-      setSuggestions([]);
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
-    const t = setTimeout(async () => {
-      const results = await searchAddresses(q);
-      setSuggestions(results);
-      setOpen(true);
-      setLoading(false);
-    }, 250);
-    return () => clearTimeout(t);
-  }, [value, picked]);
-
-  useEffect(() => {
-    function onDoc(e: MouseEvent) {
-      if (boxRef.current && !boxRef.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    }
-    document.addEventListener("mousedown", onDoc);
-    return () => document.removeEventListener("mousedown", onDoc);
-  }, []);
-
-  return (
-    <div className="flex flex-col gap-1" ref={boxRef}>
-      <label htmlFor="address" className="text-sm font-medium text-slate-700">
-        An address in the neighborhood
-      </label>
-      <div className="relative">
-        <input
-          id="address"
-          name="address"
-          type="text"
-          required
-          autoComplete="off"
-          value={value}
-          placeholder="Start typing a street address…"
-          onChange={(e) => {
-            setValue(e.target.value);
-            setPicked(false);
-            setCoords({ lon: "", lat: "" });
-          }}
-          onFocus={() => suggestions.length > 0 && setOpen(true)}
-          className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
-        />
-        {open && suggestions.length > 0 && (
-          <ul className="absolute z-10 mt-1 max-h-56 w-full overflow-auto rounded-md border border-slate-200 bg-white shadow-lg">
-            {suggestions.map((s) => (
-              <li key={s.ppn}>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setValue(s.address);
-                    setCoords({
-                      lon: String(s.lon),
-                      lat: String(s.lat),
-                    });
-                    setPicked(true);
-                    setOpen(false);
-                    setSuggestions([]);
-                  }}
-                  className="block w-full px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50"
-                >
-                  {s.address}
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-
-      <input type="hidden" name="lon" value={coords.lon} />
-      <input type="hidden" name="lat" value={coords.lat} />
-
-      {picked ? (
-        <p className="text-xs font-medium text-emerald-700">
-          ✓ Address found — we&rsquo;ll center the map here.
-        </p>
-      ) : loading ? (
-        <p className="text-xs text-slate-400">Searching…</p>
-      ) : (
-        <p className="text-xs text-slate-500">
-          Pick an address from the list. Prototype covers Kent County, MI
-          only.
-        </p>
-      )}
-
-      {error && (
-        <div className="mt-1 rounded-md border border-rose-200 bg-rose-50 p-3 text-sm text-rose-900">
-          {error}
-        </div>
-      )}
-
-      <div className="mt-2">
-        <button
-          type="submit"
-          disabled={disabled || !picked}
-          className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
-        >
-          {disabled ? "Loading…" : "Show neighborhood"}
-        </button>
       </div>
     </div>
   );

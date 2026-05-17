@@ -19,26 +19,28 @@ export type ParcelCollection = {
   features: ParcelFeature[];
 };
 
-// Parcels within `radiusMeters` of a lon/lat. Kent County, MI only —
-// outside the county this returns an empty collection (no error).
-export async function fetchParcelsNear(
-  lon: number,
-  lat: number,
-  radiusMeters = 350,
+// Parcels intersecting a lon/lat bounding box (the map's current viewport).
+// Standard GIS pattern: load only what's visible. Kent County, MI only —
+// elsewhere this returns an empty collection (no error).
+export async function fetchParcelsInBbox(
+  minLon: number,
+  minLat: number,
+  maxLon: number,
+  maxLat: number,
 ): Promise<ParcelCollection | null> {
   const url = new URL(KENT_PARCEL_QUERY);
-  url.searchParams.set("geometry", JSON.stringify({ x: lon, y: lat }));
-  url.searchParams.set("geometryType", "esriGeometryPoint");
+  url.searchParams.set(
+    "geometry",
+    `${minLon},${minLat},${maxLon},${maxLat}`,
+  );
+  url.searchParams.set("geometryType", "esriGeometryEnvelope");
   url.searchParams.set("inSR", "4326");
   url.searchParams.set("outSR", "4326");
-  url.searchParams.set("distance", String(radiusMeters));
-  url.searchParams.set("units", "esriSRUnit_Meter");
   url.searchParams.set("spatialRel", "esriSpatialRelIntersects");
-  url.searchParams.set(
-    "outFields",
-    "PPN,PROPERTYADDRESS,PROPADDRESSCITY,OWNERNAME1",
-  );
+  url.searchParams.set("where", "1=1");
+  url.searchParams.set("outFields", "PPN,PROPERTYADDRESS");
   url.searchParams.set("returnGeometry", "true");
+  url.searchParams.set("resultRecordCount", "1000");
   url.searchParams.set("f", "geojson");
 
   const res = await fetch(url, { cache: "no-store" });
@@ -46,78 +48,6 @@ export async function fetchParcelsNear(
   const data = (await res.json()) as ParcelCollection;
   if (!data?.features) return { type: "FeatureCollection", features: [] };
   return data;
-}
-
-function ringCenter(
-  geom:
-    | { type: string; coordinates: number[][][] | number[][][][] }
-    | undefined,
-): { lon: number; lat: number } | null {
-  if (!geom) return null;
-  const ring =
-    geom.type === "MultiPolygon"
-      ? (geom.coordinates as number[][][][])[0]?.[0]
-      : (geom.coordinates as number[][][])[0];
-  if (!ring || ring.length === 0) return null;
-  let sx = 0;
-  let sy = 0;
-  for (const [x, y] of ring) {
-    sx += x;
-    sy += y;
-  }
-  return { lon: sx / ring.length, lat: sy / ring.length };
-}
-
-export type AddressSuggestion = {
-  ppn: string;
-  address: string;
-  lon: number;
-  lat: number;
-};
-
-// Address typeahead, sourced from the parcel dataset itself so every
-// suggestion is a real, mappable parcel. We fetch geometry here and
-// compute each parcel's center up front, so picking a suggestion needs
-// NO second lookup — avoids re-matching on the space-padded address
-// string or the float PPN field (both unreliable for equality).
-// Kent County, MI only.
-export async function searchParcelAddresses(
-  query: string,
-): Promise<AddressSuggestion[]> {
-  const q = query.trim().toUpperCase().replace(/'/g, "''");
-  if (q.length < 3) return [];
-  const url = new URL(KENT_PARCEL_QUERY);
-  url.searchParams.set("where", `PROPERTYADDRESS LIKE '${q}%'`);
-  url.searchParams.set("outFields", "PPN,PROPERTYADDRESS");
-  url.searchParams.set("returnGeometry", "true");
-  url.searchParams.set("outSR", "4326");
-  url.searchParams.set("orderByFields", "PROPERTYADDRESS");
-  url.searchParams.set("resultRecordCount", "8");
-  url.searchParams.set("f", "geojson");
-
-  const res = await fetch(url, { cache: "no-store" });
-  if (!res.ok) return [];
-  const data = (await res.json()) as ParcelCollection;
-  const seen = new Set<string>();
-  const out: AddressSuggestion[] = [];
-  for (const f of data?.features ?? []) {
-    const a = String(f?.properties?.PROPERTYADDRESS ?? "").trim();
-    if (!a || seen.has(a)) continue;
-    const center = ringCenter(
-      f.geometry as
-        | { type: string; coordinates: number[][][] | number[][][][] }
-        | undefined,
-    );
-    if (!center) continue;
-    seen.add(a);
-    out.push({
-      ppn: String(f?.properties?.PPN ?? a),
-      address: a,
-      lon: center.lon,
-      lat: center.lat,
-    });
-  }
-  return out;
 }
 
 // "1234 MEADOW LN" → { street_number: "1234", street_name: "Meadow Ln" }.

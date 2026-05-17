@@ -2,20 +2,12 @@
 
 import { redirect } from "next/navigation";
 import { requireBoard } from "@/lib/auth/requireRole";
+import { geocodeAddress } from "@/lib/geo/geocode";
 import {
-  fetchParcelsNear,
-  searchParcelAddresses,
+  fetchParcelsInBbox,
   splitParcelAddress,
-  type AddressSuggestion,
   type ParcelCollection,
 } from "@/lib/geo/kentParcels";
-
-export async function searchAddresses(
-  query: string,
-): Promise<AddressSuggestion[]> {
-  await requireBoard();
-  return searchParcelAddresses(query);
-}
 
 export type MapState =
   | { stage: "idle"; error?: string }
@@ -23,42 +15,47 @@ export type MapState =
       stage: "loaded";
       center: { lon: number; lat: number };
       matched: string;
-      parcels: ParcelCollection;
     };
 
+// One-time: geocode the board member's address to a point so the map
+// opens on their neighborhood. No parcels here — those load by viewport.
 export async function lookupNeighborhood(
   _prev: MapState,
   formData: FormData,
 ): Promise<MapState> {
   await requireBoard();
   const address = String(formData.get("address") ?? "").trim();
-  const lon = Number(formData.get("lon"));
-  const lat = Number(formData.get("lat"));
-  if (!address || !Number.isFinite(lon) || !Number.isFinite(lat)) {
-    return { stage: "idle", error: "Pick an address from the list." };
+  if (!address) {
+    return { stage: "idle", error: "Enter an address to center the map." };
   }
 
-  const parcels = await fetchParcelsNear(lon, lat);
-  if (!parcels) {
-    return {
-      stage: "idle",
-      error: "Parcel service is unavailable right now. Try again shortly.",
-    };
-  }
-  if (parcels.features.length === 0) {
+  const point = await geocodeAddress(address);
+  if (!point) {
     return {
       stage: "idle",
       error:
-        "No parcels found here. This prototype only covers Kent County, MI.",
+        "Couldn't find that address. Add city and state, e.g. " +
+        "“123 Main St, Grand Rapids, MI”.",
     };
   }
 
   return {
     stage: "loaded",
-    center: { lon, lat },
-    matched: address,
-    parcels,
+    center: { lon: point.lon, lat: point.lat },
+    matched: point.matched,
   };
+}
+
+// Parcels for the current map viewport. Called as the user pans/zooms.
+export async function parcelsInView(
+  minLon: number,
+  minLat: number,
+  maxLon: number,
+  maxLat: number,
+): Promise<ParcelCollection> {
+  await requireBoard();
+  const data = await fetchParcelsInBbox(minLon, minLat, maxLon, maxLat);
+  return data ?? { type: "FeatureCollection", features: [] };
 }
 
 const normAddr = (s: string) =>
