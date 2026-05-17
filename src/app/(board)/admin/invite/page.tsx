@@ -120,8 +120,7 @@ export default async function InvitePage({
             </button>
           </form>
           <p className="text-xs text-slate-500">
-            Board invitees get full access on first sign-in — no SQL or follow-up
-            promotion needed.
+            Board members get full access as soon as they sign in.
           </p>
         </div>
       </section>

@@ -35,8 +35,7 @@ export default async function LotsListPage({
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Lots</h1>
           <p className="text-sm text-slate-600">
-            {lots?.length ?? 0} lot{lots?.length === 1 ? "" : "s"} in the
-            database
+            {lots?.length ?? 0} lot{lots?.length === 1 ? "" : "s"}
           </p>
         </div>
         <div className="flex gap-2">

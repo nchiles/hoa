@@ -110,7 +110,7 @@ export default async function LotDetailPage({
         <div className="overflow-hidden rounded-lg border border-slate-200 bg-white">
           {!dues || dues.length === 0 ? (
             <p className="px-4 py-6 text-center text-sm text-slate-500">
-              No dues records yet. Dues entry UI lands in Phase 2.
+              No dues records yet.
             </p>
           ) : (
             <table className="w-full text-sm">

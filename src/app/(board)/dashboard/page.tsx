@@ -64,7 +64,7 @@ export default async function DashboardPage() {
       key: "lots",
       label: "Add lots",
       detail: hasLots
-        ? `${lotCount} lot${lotCount === 1 ? "" : "s"} in the database.`
+        ? `${lotCount} lot${lotCount === 1 ? "" : "s"} added.`
         : "Import a CSV roster or add lots one at a time.",
       href: hasLots ? "/lots" : "/lots/import",
       cta: hasLots ? "Manage" : "Import CSV →",
@@ -108,10 +108,6 @@ export default async function DashboardPage() {
         <h1 className="text-2xl font-semibold tracking-tight">
           Board dashboard
         </h1>
-        <p className="text-sm text-slate-600">
-          Phase 1 view. Charts, expenditure tracker, and the neighborhood map
-          arrive in Phase 2.
-        </p>
       </header>
 
       <section className="rounded-lg border border-slate-200 bg-white">
