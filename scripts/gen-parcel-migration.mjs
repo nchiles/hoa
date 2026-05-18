@@ -47,8 +47,11 @@ const sql = `-- 20260517000000_summer_meadows_parcels.sql
 alter table public.lots add column if not exists geometry_geojson jsonb;
 alter table public.lots add column if not exists parcel_pin text;
 
+-- Plain (non-partial) unique index so ON CONFLICT (parcel_pin) can infer
+-- it. Postgres treats NULLs as distinct, so other lots with no parcel_pin
+-- are unaffected.
 create unique index if not exists lots_parcel_pin_key
-  on public.lots (parcel_pin) where parcel_pin is not null;
+  on public.lots (parcel_pin);
 
 ${rows
   .map(
