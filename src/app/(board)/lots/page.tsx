@@ -40,6 +40,12 @@ export default async function LotsListPage({
         </div>
         <div className="flex gap-2">
           <Link
+            href="/lots/map"
+            className="rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+          >
+            Map
+          </Link>
+          <Link
             href="/lots/import"
             className="rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
           >
